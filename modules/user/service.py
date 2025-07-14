@@ -1,6 +1,7 @@
 
 from fastapi import HTTPException
 from utils.hasher import Hasher
+from utils.jwt_token import JWTToken
 
 from . import repository
 
@@ -19,8 +20,41 @@ class UserService:
         
         user.password = Hasher.hash(user.password)
         
+
         user = self.repository.create_object(user)
         
-        return await self.repository.create(self.db,user)
+        try:
+            user = await self.repository.create(self.db,user)
+        except Exception as e:
+            raise HTTPException(status_code=400,detail=str(e))
+        return user
+    
+    async def login(self,userRequest):
+        user = await self.repository.get_by_email(self.db,userRequest.email)
+        if not user or not user.is_active:
+            raise HTTPException(status_code=400,detail="Invalid email or password")
+        if not Hasher.verify(userRequest.password,user.password):
+            raise HTTPException(status_code=400,detail="Invalid email or password")
+        
+        access_token = await self.genarate_token(user)
+        refresh_token = await self.refresh_token(user)
+        return {"access_token":access_token,"refresh_token":refresh_token,"user":user}
+    
+    async def genarate_token(self,user):
+        data = {}
+        data['user_id'] = user.id
+        data['email'] = user.email
+
+        token = JWTToken.create_access_token(data)
+
+        return token
+    
+    async def refresh_token(self,user):
+        data = {}
+        data['user_id'] = user.id
+
+        token = JWTToken.create_refresh_token(data)
+
+        return token
         
         

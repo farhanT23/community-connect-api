@@ -42,8 +42,12 @@ async def create(db,user):
         user.created_at = datetime.now(timezone.utc)
     if(user.updated_at == None):
         user.updated_at = datetime.now(timezone.utc)
-    db.add(user)
-    await db.commit()
+    try:
+        db.add(user)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise e
     await db.refresh(user)
     return user
 

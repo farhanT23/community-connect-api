@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils.error_response import ErrorResponse
 from utils.database import get_db
 
-from .schema import UserSchema,UserCreateSchema
+from .schema import UserLoginResponseSchema, UserLoginSchema, UserSchema,UserCreateSchema
 from .service import UserService
 
 router = APIRouter(
@@ -27,3 +27,12 @@ async def create_user(request:Request,user:UserCreateSchema,db:AsyncSession=Depe
     user = await service.create_user(user)
 
     return user
+
+
+@router.post('/login',response_model=UserLoginResponseSchema)
+async def login(request:Request,user:UserLoginSchema,db:AsyncSession=Depends(get_db)):
+
+    service = UserService(db)
+    response = await service.login(user)
+
+    return response

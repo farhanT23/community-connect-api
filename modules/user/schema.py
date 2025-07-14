@@ -33,8 +33,13 @@ class UserSchema(UserBaseSchema):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserLoginSchema(BaseModel):
-    email: str
+    email: EmailStr
     password: str
+
+class UserLoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    user: UserSchema
