@@ -31,11 +31,9 @@ class UserService:
     
     async def login(self,userRequest):
         user = await self.repository.get_by_email(self.db,userRequest.email)
-        if not user or not user.is_active:
+        if not user or not user.is_active or not Hasher.verify(userRequest.password,user.password):
             raise HTTPException(status_code=400,detail="Invalid email or password")
-        if not Hasher.verify(userRequest.password,user.password):
-            raise HTTPException(status_code=400,detail="Invalid email or password")
-        
+
         return user
     
     async def genarate_token(self,user):
