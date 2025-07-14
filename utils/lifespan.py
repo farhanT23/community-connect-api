@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from utils.database import engine, Base
+from modules.user.models import User
 
 
 @asynccontextmanager
