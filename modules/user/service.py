@@ -36,9 +36,7 @@ class UserService:
         if not Hasher.verify(userRequest.password,user.password):
             raise HTTPException(status_code=400,detail="Invalid email or password")
         
-        access_token = await self.genarate_token(user)
-        refresh_token = await self.refresh_token(user)
-        return {"access_token":access_token,"refresh_token":refresh_token,"user":user}
+        return user
     
     async def genarate_token(self,user):
         data = {}
@@ -57,4 +55,27 @@ class UserService:
 
         return token
         
+
+    async def get_user(self,user_id):
+        user = await self.repository.get_by_id(self.db,user_id)
+        if not user:
+            raise HTTPException(status_code=404,detail="User not found")
+        
+        return user
+    
+    async def get_refresh_token_user(self,token):
+        payload = JWTToken.decode_token(token)
+
+        if not payload:
+            raise HTTPException(
+            status_code=404,
+            detail="Invalid or expired token",
+        )
+
+        user = await self.repository.get_by_id(self.db,payload['user_id'])
+
+        if not user:
+            raise HTTPException(status_code=404,detail="User not found")
+
+        return user
         
