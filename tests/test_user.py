@@ -1,3 +1,4 @@
+from utils.jwt_token import JWTToken
 from .setup import *
 
 @pytest.fixture(scope="session", autouse=True)
@@ -66,3 +67,31 @@ def test_login():
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["user"]["email"] == "testt@example.com"
     assert response.json()["token"]["access_token"]
+    assert response.json()["token"]["refresh_token"]
+
+
+def test_profile_update():
+    #Test wrong password
+    auth_response = client.post("/user/login", json={
+        "email": "testt@example.com",
+        "password": "p1234!2A8"
+    })
+    assert auth_response.status_code == status.HTTP_200_OK
+
+    response = client.put("/user/profile", json={
+        "name": "test",
+        "birthdate": "2000-01-01",
+        "gender": "others"
+    },headers={"Authorization": f"Bearer {auth_response.json()['token']['access_token']}"})
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    response = client.put("/user/profile", json={
+        "bio": "test",
+        "birthdate": "2000-01-01",
+        "gender": "male"
+    },headers={"Authorization": f"Bearer {auth_response.json()['token']['access_token']}"})
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["bio"] == "test"
+    assert response.json()["birthdate"] == "2000-01-01"
+    assert response.json()["gender"] == "male"
+

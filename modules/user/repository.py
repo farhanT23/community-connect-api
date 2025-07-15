@@ -62,3 +62,8 @@ async def delete(user_id,db):
     await db.commit()
     return True
 
+async def update(db,user):
+    user.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(user)
+    return user

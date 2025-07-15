@@ -57,3 +57,8 @@ class Token(BaseModel):
 class UserLoginResponseSchema(BaseModel):
     token:Token
     user: UserSchema
+
+class UserProfileUpdateSchema(BaseModel):
+    birthdate: date|None
+    gender: str|None = Field(examples=["male", "female"])
+    bio: str|None

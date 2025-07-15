@@ -1,4 +1,5 @@
 
+from datetime import datetime, timezone
 from fastapi import HTTPException
 from utils.hasher import Hasher
 from utils.jwt_token import JWTToken
@@ -77,3 +78,14 @@ class UserService:
 
         return user
         
+    async def update_profile(self,user_id,profile):
+        user = await self.repository.get_by_id(self.db,user_id)
+        user.birthdate = profile.birthdate
+        user.gender = profile.gender
+        user.bio = profile.bio
+        try:
+            user = await self.repository.update(self.db,user)
+        except Exception as e:
+            raise HTTPException(status_code=400,detail=str(e))
+        return user
+    

@@ -7,7 +7,11 @@ from middlewares.auth import get_current_user
 from utils.error_response import ErrorResponse
 from utils.database import get_db
 
-from .schema import (UserLoginResponseSchema, UserLoginSchema, UserSchema,UserCreateSchema,Token)
+from .schema import (UserLoginResponseSchema, UserLoginSchema, 
+                     UserSchema,UserCreateSchema,Token,
+                     UserProfileUpdateSchema
+
+                     )
 from .service import UserService
 
 router = APIRouter(
@@ -80,3 +84,13 @@ async def refresh_token(request:Request,token:str,db:AsyncSession=Depends(get_db
 
     
     return token_response
+
+@router.put('/profile',response_model=UserProfileUpdateSchema)
+async def update_profile(request:Request,profile:UserProfileUpdateSchema
+                         ,db:AsyncSession=Depends(get_db),
+                         current_user:dict=Depends(get_current_user)):
+
+    service = UserService(db)
+    user = await service.update_profile(current_user["user_id"],profile)
+
+    return user
