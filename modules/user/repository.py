@@ -11,6 +11,12 @@ def create_object(user):
     if(hasattr(user,"is_active")):
         obj.is_active = user.is_active
 
+    if(hasattr(user,"birthdate")):
+        obj.birthdate = user.birthdate
+
+    if(hasattr(user,"gender")):
+        obj.gender = user.gender
+
     if(hasattr(user,"is_active")):
         obj.created_at = user.created_at
     if(hasattr(user,"is_active")):

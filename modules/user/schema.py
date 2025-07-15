@@ -1,6 +1,6 @@
 import re
-from pydantic import BaseModel, field_validator,EmailStr
-from datetime import datetime
+from pydantic import BaseModel, Field, field_validator,EmailStr
+from datetime import date, datetime
 
 class UserBaseSchema(BaseModel):
     name: str
@@ -8,7 +8,14 @@ class UserBaseSchema(BaseModel):
 
 class UserCreateSchema(UserBaseSchema):
     password: str
+    birthdate: date|None
+    gender: str|None = Field(examples=["male", "female"])
 
+    @field_validator("gender")
+    def validate_gender(cls, v):
+        if v not in ["male", "female"]:
+            raise ValueError("Gender must be 'male', 'female', or 'other'.")
+        return v
     @field_validator("password")
     def validate_password(cls, v):
         if len(v) < 8:
@@ -29,6 +36,9 @@ class UserSchema(UserBaseSchema):
     is_active: bool
     profile_image: str|None
     cover_image: str|None
+    birthdate: date|None
+    gender: str|None = Field(examples=["male", "female"])
+    bio: str|None
     created_at: datetime
     updated_at: datetime
 
