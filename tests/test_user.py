@@ -1,5 +1,3 @@
-import time
-from typing import assert_type
 from .setup import *
 
 @pytest.fixture(scope="session", autouse=True)
