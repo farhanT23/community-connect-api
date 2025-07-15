@@ -8,7 +8,7 @@ from utils.send_email import send_mail as send_email
 from utils.error_response import ErrorResponse
 from utils.database import get_db
 
-from .schema import (UserForgotPasswordSchema, UserLoginResponseSchema, UserLoginSchema, 
+from .schema import (UserForgotPasswordSchema, UserLoginResponseSchema, UserLoginSchema, UserResetPasswordSchema, 
                      UserSchema,UserCreateSchema,Token,
                      UserProfileUpdateSchema
 
@@ -18,7 +18,12 @@ from .service import UserService
 router = APIRouter(
     prefix="/user",
     tags=["user"],
-    responses={404: {"model": ErrorResponse},400: {"model": ErrorResponse},401: {"model": ErrorResponse}},
+    responses={
+        404: {"model": ErrorResponse},
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        200: {"model": ErrorResponse},
+        },
 )
 
 
@@ -109,4 +114,12 @@ async def forget_password(request:Request,user:UserForgotPasswordSchema,backgrou
             template="reset_password.html"
         )
     
-    return {"message":"Email sent"}
+    return {"detail":"Email sent"}
+
+
+@router.post('/reset-password/{token}')
+async def reset_password(request:Request,token:str,reset_password:UserResetPasswordSchema,db:AsyncSession=Depends(get_db)):
+    service = UserService(db)
+    await service.reset_password(token,reset_password)
+
+    return {"detail":"Password reseted Successfully"}
