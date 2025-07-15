@@ -62,3 +62,6 @@ class UserProfileUpdateSchema(BaseModel):
     birthdate: date|None
     gender: str|None = Field(examples=["male", "female"])
     bio: str|None
+
+class UserForgotPasswordSchema(BaseModel):
+    email: EmailStr
