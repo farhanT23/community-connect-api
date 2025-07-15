@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter,Request,Depends, Response
+from fastapi import APIRouter,Request,Depends, Response,status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -23,7 +23,7 @@ async def health():
     return {"message": "Up"}
 
 
-@router.post('/',response_model=UserLoginResponseSchema)
+@router.post('/',response_model=UserLoginResponseSchema,status_code=status.HTTP_201_CREATED)
 async def create_user(request:Request,user:UserCreateSchema,db:AsyncSession=Depends(get_db)):
 
     service = UserService(db)
