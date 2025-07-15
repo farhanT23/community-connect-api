@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime,Date,Text
+from sqlalchemy.orm import relationship
 
 from utils.database import Base
 
@@ -17,6 +18,8 @@ class User(Base):
     birthdate = Column(Date, nullable=True)
     gender = Column(String(255), nullable=True)
     bio = Column(Text, nullable=True)
+
+    posts = relationship("Post", back_populates="user", cascade="all, delete-orphan")
 
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
