@@ -30,7 +30,9 @@ def test_create_user():
     response = client.post("/user", json={
         "email": "testt@example.com",
         "password": "p1234!2A8",
-        "name": "test"
+        "name": "test",
+        "birthdate": "2000-01-01",
+        "gender": "male"
     })
     assert response.status_code == status.HTTP_201_CREATED
 
