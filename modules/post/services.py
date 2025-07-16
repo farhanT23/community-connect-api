@@ -145,7 +145,7 @@ class PostService:
 
         # Step 6: Build media list for response
         media_out = [
-            MediaOut(id=m.id, file=m.file, media_type=m.media_type)
+            MediaOut(id=m.id, file=m.file)
             for m in saved_media
         ]
 
