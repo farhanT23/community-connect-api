@@ -73,3 +73,22 @@ async def delete_post(
     await service.delete_post(post_id, current_user["user_id"])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+@router.put("/{post_id}/edit", response_model=PostOut)
+async def edit_post(
+    post_id: int,
+    content: Optional[str] = Form(None),
+    privacy: PrivacyEnum = Form(PrivacyEnum.PUBLIC),
+    media_files: Optional[List[UploadFile]] = File(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    return await service.edit_post(
+        post_id=post_id,
+        user_id=current_user["user_id"],
+        content=content,
+        privacy=privacy,
+        media_files=media_files
+    )
+
+

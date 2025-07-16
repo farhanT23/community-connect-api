@@ -197,6 +197,68 @@ class PostService:
 
         return saved_media
 
+    async def edit_post(
+            self,
+            post_id: int,
+            user_id: int,
+            content: Optional[str],
+            privacy: PrivacyEnum,
+            media_files: Optional[List[UploadFile]]
+    ) -> PostOut:
+        # 1. Fetch the post
+        query = (
+            select(Post)
+            .where(Post.id == post_id)
+            .options(selectinload(Post.tagged_media), selectinload(Post.user))
+        )
+        result = await self.db.execute(query)
+        post = result.scalar_one_or_none()
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        # 2. Check if the user is the owner
+        if post.user_id != user_id:
+            raise HTTPException(status_code=403, detail="You are not allowed to edit this post")
+
+        # 3. Update fields
+        post.content = content
+        post.privacy = privacy
+
+        # 4. Add new media files if any
+        new_media = await self.upload_media_files(media_files)
+        post.tagged_media.extend(new_media)
+
+        # 5. Save
+        await self.db.commit()
+        await self.db.refresh(post)
+
+        # 6. Build response
+        reaction_count = await self._count(Reaction, Reaction.post_id == post.id)
+        comment_count = await self._count(Comment, Comment.post_id == post.id)
+        share_count = await self._count(Post, Post.original_post_id == post.id)
+
+        return PostOut(
+            id=post.id,
+            content=post.content,
+            privacy=post.privacy,
+            user=UserSummaryOut(
+                id=post.user.id,
+                name=post.user.name,
+                profile_image=post.user.profile_image
+            ),
+            tagged_media=[
+                MediaOut(id=m.id, file=m.file)
+                for m in post.tagged_media
+            ],
+            reaction_count=reaction_count,
+            comment_count=comment_count,
+            share_count=share_count,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
+            original_post=None  # not needed for edit
+        )
+
     def _generate_unique_filename(self, original_filename: str) -> str:
         ext = os.path.splitext(original_filename)[1]
         return f"{uuid.uuid4().hex}{ext}"
