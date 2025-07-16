@@ -11,12 +11,12 @@ class PrivacyEnum(PyEnum):
     ONLY_ME = "only_me"
 
 class ReactionTypeEnum(PyEnum):
-    LIKE = "like"
-    LOVE = "love"
-    HAHA = "haha"
-    WOW = "wow"
-    SAD = "sad"
-    ANGRY = "angry"
+    like = "like"
+    love = "love"
+    haha = "haha"
+    wow = "wow"
+    sad = "sad"
+    angry = "angry"
 
 post_media_association_table = Table(
     "post_media_association",
@@ -55,7 +55,7 @@ class Reaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    type = Column(Enum(ReactionTypeEnum), nullable=False)
+    type = Column(Enum(ReactionTypeEnum, native_enum=False), nullable=False)
 
 class Comment(Base):
     __tablename__ = "comments"

@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 
 from asyncmy.connection import Optional
 from pydantic import BaseModel, Field, field_validator,EmailStr
@@ -70,3 +71,6 @@ class UserSummaryOut(BaseModel):
     name: str
     profile_image: Optional[str]
     model_config = {"from_attributes": True}
+
+class ReactionResponse(BaseModel):
+    detail: str
