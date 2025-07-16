@@ -122,3 +122,16 @@ async def post_reaction(
     )
     return response
 
+@router.post("/{post_id}/share", response_model=PostOut)
+async def share_post(
+    post_id: int,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    service = PostService(db)
+    shared_post = await service.share_post(
+        post_id=post_id,
+        user_id=current_user["user_id"]
+    )
+    return shared_post
