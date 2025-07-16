@@ -97,27 +97,7 @@ class PostService:
         media_files: Optional[List[UploadFile]]
     ) -> PostOut:
         # Step 1: Save each media file to disk and record in DB
-        saved_media = []
-
-        media_dir = "media"
-        os.makedirs(media_dir, exist_ok=True)
-
-        for file in media_files or []:  # handle None
-            filename = self._generate_unique_filename(file.filename)
-            file_path = os.path.join(media_dir, filename)
-
-            # Save to disk
-            with open(file_path, "wb") as buffer:
-                buffer.write(await file.read())
-
-            # Create Media row
-            media = Media(
-                file=filename,
-                media_type=file.content_type
-            )
-            self.db.add(media)
-            await self.db.flush()  # Needed to get media.id
-            saved_media.append(media)
+        saved_media = await self.upload_media_files(media_files)
 
         # Step 2: Create Post with media
         post = Post(
@@ -192,6 +172,30 @@ class PostService:
 
         await self.db.commit()
 
+    async def upload_media_files(self, media_files: Optional[List[UploadFile]]) -> List[Media]:
+        saved_media = []
+        media_dir = "media"
+        os.makedirs(media_dir, exist_ok=True)
+
+        for file in media_files or []:
+            filename = self._generate_unique_filename(file.filename)
+            file_path = os.path.join(media_dir, filename)
+
+            # Save to disk
+            with open(file_path, "wb") as buffer:
+                buffer.write(await file.read())
+
+            # Save to DB
+            media = Media(
+                file=filename,
+                media_type=file.content_type
+            )
+            self.db.add(media)
+            await self.db.flush()  # So media.id is populated
+
+            saved_media.append(media)
+
+        return saved_media
 
     def _generate_unique_filename(self, original_filename: str) -> str:
         ext = os.path.splitext(original_filename)[1]
