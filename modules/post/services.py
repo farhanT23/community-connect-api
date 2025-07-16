@@ -11,6 +11,8 @@ from fastapi import HTTPException, UploadFile
 from modules.post.models import Post, Reaction, Comment, Media
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum
 from modules.user.models import User
+from modules.post.models import Post, Reaction, Comment, PrivacyEnum
+from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
 
 
 class PostService:
@@ -34,8 +36,8 @@ class PostService:
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
 
-        if post.privacy.name == "only_me":
-            if not current_user_id or current_user_id != post.user_id:
+        if post.privacy == PrivacyEnum.ONLY_ME:
+            if not current_user_id or (current_user_id != post.user_id):
                 raise HTTPException(status_code=403, detail="This post is private")
 
         reaction_count = await self._count(Reaction, Reaction.post_id == post.id)
