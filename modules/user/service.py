@@ -1,10 +1,11 @@
 import os
 from datetime import datetime, timezone
 import random
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from config import BASE_PATH
 from utils.hasher import Hasher
 from utils.jwt_token import JWTToken
+import aiofiles
 
 
 from . import repository
@@ -110,7 +111,7 @@ class UserService:
         
         return {"token":token,"user":user}
     
-    async def upload_profile_image(self,user_id,image):
+    async def upload_profile_image(self,user_id,image:UploadFile):
         user = await self.repository.get_by_id(self.db,user_id)
         file_name = await self.upload(image)
         user.profile_image = file_name
@@ -120,24 +121,28 @@ class UserService:
             raise HTTPException(status_code=400,detail=str(e))
         return user
     
-    async def upload(self, file):
+    async def upload(self, file:UploadFile):
         root_folder = BASE_PATH
 
         # Generate unique filename
-        file.filename = f"{datetime.now(timezone.utc).timestamp() * random.random()}_{file.filename}"
+        filename = self._genarate_filename(file.filename)
 
         # Target path
-        folder_path = os.path.join(root_folder, "media", "user")
-        file_path = os.path.join(folder_path, file.filename)
+        folder_path = os.path.join(root_folder, "media","user")
+        file_path = os.path.join(folder_path, filename)
 
         # Create directory if it doesn't exist
         os.makedirs(folder_path, exist_ok=True)
 
         # Write file
-        with open(file_path, "wb") as f:
-            f.write(file.file.read())
-
-        return file.filename
+        async with aiofiles.open(file_path, "wb") as out_file:
+            await out_file.write(await file.read())
+        return filename
+    
+    def _genarate_filename(self, filename):
+        ext = filename.split(".")[-1]
+        new_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}.{ext}"
+        return new_filename
 
 
         

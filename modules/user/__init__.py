@@ -134,14 +134,17 @@ async def reset_password(request:Request,token:str,reset_password:UserResetPassw
 @router.post('/upload-profile-image',response_model=UserSchema)
 async def upload_profile_image(
     request:Request,
-    file:UploadFile,
+    file:UploadFile=File(None),
     db:AsyncSession=Depends(get_db),
     current_user:dict=Depends(get_current_user)
     ):
 
     validate_file_size_type(file,["image/png","image/jpeg","image/jpg"])
+    file.file.seek(0)
+
 
     service = UserService(db)
+
     user = await service.upload_profile_image(current_user["user_id"],file)
 
     return user
