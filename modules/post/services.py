@@ -259,6 +259,50 @@ class PostService:
             original_post=None  # not needed for edit
         )
 
+    async def remove_post_media(self, post_id: int, media_id: int, user_id: int):
+        # 1. Get post with media relation
+        query = (
+            select(Post)
+            .where(Post.id == post_id)
+            .options(selectinload(Post.tagged_media))
+        )
+        result = await self.db.execute(query)
+        post = result.scalar_one_or_none()
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        if post.user_id != user_id:
+            raise HTTPException(status_code=403, detail="You are not allowed to remove media from this post")
+
+        # 2. Find the media in post
+        media_to_remove = next((m for m in post.tagged_media if m.id == media_id), None)
+        if not media_to_remove:
+            raise HTTPException(status_code=404, detail="Media not attached to this post")
+
+        # 3. Remove file from disk
+        file_path = os.path.join("media", media_to_remove.file)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        # 4. Detach from post
+        post.tagged_media.remove(media_to_remove)
+
+        # 5. Optional: check if media used elsewhere, delete if not
+        # We do this only if it's orphaned from all posts
+        media_used_elsewhere = (
+            select(Post)
+            .join(Post.tagged_media)
+            .where(Media.id == media_id)
+            .where(Post.id != post_id)
+        )
+        other_use = await self.db.execute(media_used_elsewhere)
+        if not other_use.first():
+            await self.db.delete(media_to_remove)
+
+        # 6. Save changes
+        await self.db.commit()
+
     def _generate_unique_filename(self, original_filename: str) -> str:
         ext = os.path.splitext(original_filename)[1]
         return f"{uuid.uuid4().hex}{ext}"

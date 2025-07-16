@@ -91,4 +91,18 @@ async def edit_post(
         media_files=media_files
     )
 
+@router.delete("/{post_id}/media/{media_id}/remove")
+async def remove_post_media(
+    post_id: int,
+    media_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    await service.remove_post_media(
+        post_id=post_id,
+        media_id=media_id,
+        user_id=current_user["user_id"]
+    )
+    return {"detail": "Media removed successfully"}
 
