@@ -163,6 +163,35 @@ class PostService:
             original_post=None
         )
 
+    async def delete_post(self, post_id: int, current_user_id: int):
+
+        query = (
+            select(Post)
+            .where(Post.id == post_id)
+            .options(selectinload(Post.tagged_media))
+        )
+        result = await self.db.execute(query)
+        post = result.scalar_one_or_none()
+
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        if post.user_id != current_user_id:
+            raise HTTPException(status_code=403, detail="You are not allowed to delete this post")
+
+        for media in post.tagged_media:
+            file_path = os.path.join("media", media.file)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print(f"Warning: Failed to delete {file_path}. Error: {e}")
+
+        await self.db.delete(post)
+
+        await self.db.commit()
+
 
     def _generate_unique_filename(self, original_filename: str) -> str:
         ext = os.path.splitext(original_filename)[1]
