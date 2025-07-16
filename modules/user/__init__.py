@@ -1,18 +1,24 @@
 
-from fastapi import APIRouter, BackgroundTasks,Request,Depends, Response,status
+from fastapi import APIRouter, BackgroundTasks, File,Request,Depends, Response, UploadFile,status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from middlewares.auth import get_current_user
+from utils.file_validator import validate_file_size_type
 from utils.send_email import send_mail as send_email
 from utils.error_response import ErrorResponse
 from utils.database import get_db
 
-from .schema import (UserForgotPasswordSchema, UserLoginResponseSchema, UserLoginSchema, UserResetPasswordSchema, 
-                     UserSchema,UserCreateSchema,Token,
-                     UserProfileUpdateSchema
-
-                     )
+from .schema import (
+    UserForgotPasswordSchema, 
+    UserLoginResponseSchema, 
+    UserLoginSchema, 
+    UserResetPasswordSchema, 
+    UserSchema,
+    UserCreateSchema,
+    Token,
+    UserProfileUpdateSchema
+    )
 from .service import UserService
 
 router = APIRouter(
@@ -123,3 +129,19 @@ async def reset_password(request:Request,token:str,reset_password:UserResetPassw
     await service.reset_password(token,reset_password)
 
     return {"detail":"Password reseted Successfully"}
+
+
+@router.post('/upload-profile-image',response_model=UserSchema)
+async def upload_profile_image(
+    request:Request,
+    file:UploadFile,
+    db:AsyncSession=Depends(get_db),
+    current_user:dict=Depends(get_current_user)
+    ):
+
+    validate_file_size_type(file,["image/png","image/jpeg","image/jpg"])
+
+    service = UserService(db)
+    user = await service.upload_profile_image(current_user["user_id"],file)
+
+    return user

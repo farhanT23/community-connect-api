@@ -1,8 +1,11 @@
-
+import os
 from datetime import datetime, timezone
+import random
 from fastapi import HTTPException
+from config import BASE_PATH
 from utils.hasher import Hasher
 from utils.jwt_token import JWTToken
+
 
 from . import repository
 
@@ -106,5 +109,35 @@ class UserService:
         token = JWTToken.create_access_token({"user_id":user.id,"email":user.email})
         
         return {"token":token,"user":user}
+    
+    async def upload_profile_image(self,user_id,image):
+        user = await self.repository.get_by_id(self.db,user_id)
+        file_name = await self.upload(image)
+        user.profile_image = file_name
+        try:
+            user = await self.repository.update(self.db,user)
+        except Exception as e:
+            raise HTTPException(status_code=400,detail=str(e))
+        return user
+    
+    async def upload(self, file):
+        root_folder = BASE_PATH
+
+        # Generate unique filename
+        file.filename = f"{datetime.now(timezone.utc).timestamp() * random.random()}_{file.filename}"
+
+        # Target path
+        folder_path = os.path.join(root_folder, "media", "user")
+        file_path = os.path.join(folder_path, file.filename)
+
+        # Create directory if it doesn't exist
+        os.makedirs(folder_path, exist_ok=True)
+
+        # Write file
+        with open(file_path, "wb") as f:
+            f.write(file.file.read())
+
+        return file.filename
+
 
         
