@@ -1,4 +1,3 @@
-# modules/post/service.py
 import os
 import uuid
 from typing import Optional, List
