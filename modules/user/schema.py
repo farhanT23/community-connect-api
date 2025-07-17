@@ -1,5 +1,9 @@
 import re
 from pydantic import BaseModel, Field, field_validator,EmailStr, model_validator
+from enum import Enum
+
+from asyncmy.connection import Optional
+from pydantic import BaseModel, Field, field_validator,EmailStr
 from datetime import date, datetime
 
 class UserBaseSchema(BaseModel):
@@ -64,6 +68,15 @@ class UserProfileUpdateSchema(BaseModel):
     gender: str|None = Field(examples=["male", "female"])
     bio: str|None
 
+class UserSummaryOut(BaseModel):
+    id: int
+    name: str
+    profile_image: Optional[str]
+    model_config = {"from_attributes": True}
+
+class ReactionResponse(BaseModel):
+    detail: str
+
 class UserForgotPasswordSchema(BaseModel):
     email: EmailStr
 
@@ -91,4 +104,4 @@ class UserResetPasswordSchema(BaseModel):
             raise ValueError("Password and new password must be the same")
         return self
 
-    
+
