@@ -9,7 +9,8 @@ from config import app_settings
 from utils.jwt_token import JWTToken
 
 oauth2_scheme = HTTPBearer(auto_error=False)
-def get_current_user(token: str = Depends(oauth2_scheme)):
+oauth1_scheme = HTTPBearer()
+def get_current_user(token: str = Depends(oauth1_scheme)):
     payload = JWTToken.decode_token(token.credentials)
     if not payload:
         raise HTTPException(

@@ -8,7 +8,8 @@ from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, UploadFile
 
 from modules.post.models import Post, Reaction, Comment, Media
-from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum
+from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum, \
+    CommentOut
 from modules.user.models import User
 from modules.post.models import Post, Reaction, Comment, PrivacyEnum
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
@@ -441,4 +442,42 @@ class PostService:
             created_at=shared_post.created_at,
             updated_at=shared_post.updated_at,
             original_post=original_post_out
+        )
+
+    async def comment_on_post(self, post_id: int, content: str, user_id: int):
+        query = select(Post).where(Post.id == post_id)
+        result = await self.db.execute(query)
+        post = result.scalar_one_or_none()
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+
+        comment = Comment(
+            post_id=post_id,
+            user_id=user_id,
+            content=content,
+            created_at=func.now(),
+            updated_at=func.now()
+        )
+
+        self.db.add(comment)
+        await self.db.commit()
+        await self.db.refresh(comment)
+
+
+        query = select(Comment).options(selectinload(Comment.user)).where(Comment.id == comment.id)
+        result = await self.db.execute(query)
+        comment_with_user = result.scalar_one()
+
+        return CommentOut(
+            id=comment_with_user.id,
+            content=comment_with_user.content,
+            user=UserSummaryOut(
+                id=comment_with_user.user.id,
+                name=comment_with_user.user.name,
+                profile_image=comment_with_user.user.profile_image
+            ),
+            created_at=comment_with_user.created_at,
+            updated_at=comment_with_user.updated_at
         )

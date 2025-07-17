@@ -9,7 +9,7 @@ from middlewares.auth import get_current_user, optional_get_current_user
 from utils.error_response import ErrorResponse
 from .models import PrivacyEnum
 
-from .schema import PostOut, ReactionTypeEnum
+from .schema import PostOut, ReactionTypeEnum, CommentOut
 from .services import PostService
 from ..user.schema import ReactionResponse
 
@@ -135,3 +135,18 @@ async def share_post(
         user_id=current_user["user_id"]
     )
     return shared_post
+
+@router.post("/{post_id}/comment", response_model=CommentOut)
+async def comment_on_post(
+    post_id:int,
+    content: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    comment = await service.comment_on_post(
+        post_id=post_id,
+        user_id=current_user["user_id"],
+        content=content
+    )
+    return comment
