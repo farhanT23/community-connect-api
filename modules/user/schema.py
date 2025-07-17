@@ -39,7 +39,7 @@ class UserSchema(UserBaseSchema):
     birthdate: date|None
     gender: str|None = Field(examples=["male", "female"])
     bio: str|None
-    is_followed: bool|None = Field(default=False, optional=True)
+    is_followed: bool|None = Field(default=False)
     created_at: datetime
     updated_at: datetime
 
