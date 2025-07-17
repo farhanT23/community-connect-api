@@ -522,3 +522,27 @@ class PostService:
             created_at=reply_with_user.created_at,
             updated_at=reply_with_user.updated_at
         )
+
+    async def delete_comment(self, comment_id: int, user_id: int):
+        query = select(Comment).where(Comment.id == comment_id)
+        result = await self.db.execute(query)
+        comment = result.scalar_one_or_none()
+
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        if comment.user_id != user_id:
+            raise HTTPException(status_code=403, detail="You are not allowed to delete this comment")
+
+        # Delete the comment where parent_id is comment_id
+        reply_query = select(Comment).where(Comment.parent_id == comment_id)
+        reply_result = await self.db.execute(reply_query)
+        replies = reply_result.scalars().all()
+        for reply in replies:
+            await self.db.delete(reply)
+
+        await self.db.delete(comment)
+        await self.db.commit()
+
+        # Return a 204 No Content response with detail
+        return {"detail": "Comment deleted successfully"}

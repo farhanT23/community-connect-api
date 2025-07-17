@@ -167,3 +167,16 @@ async def comment_on_comment(
         content=content
     )
     return comment
+
+@router.delete("/comment/{comment_id}/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    comment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    response = await service.delete_comment(
+        comment_id=comment_id,
+        user_id=current_user["user_id"]
+    )
+    return response
