@@ -56,10 +56,12 @@ class PostCreate(BaseModel):
     content: Optional[str] = None
     privacy: PrivacyEnum = PrivacyEnum.public
 
-class CommentOut(BaseModel):
+class CommentBase(BaseModel):
     id: int
     content: str
-    parent_id: Optional[int] = None
     user: UserSummaryOut
     created_at: datetime
     updated_at: datetime
+
+class CommentReplyOut(CommentBase):
+    parent_id: int

@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, UploadFile
 
+from modules.post import CommentReplyOut
 from modules.post.models import Post, Reaction, Comment, Media
-from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum, \
-    CommentOut
+from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum, CommentBase
 from modules.user.models import User
 from modules.post.models import Post, Reaction, Comment, PrivacyEnum
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
@@ -470,7 +470,7 @@ class PostService:
         result = await self.db.execute(query)
         comment_with_user = result.scalar_one()
 
-        return CommentOut(
+        return CommentBase(
             id=comment_with_user.id,
             content=comment_with_user.content,
             user=UserSummaryOut(
@@ -480,4 +480,45 @@ class PostService:
             ),
             created_at=comment_with_user.created_at,
             updated_at=comment_with_user.updated_at
+        )
+
+    async def comment_reply(self, post_id: int, content: str, user_id: int, comment_id: int):
+        query = select(Comment).where(Comment.id == comment_id)
+        result = await self.db.execute(query)
+        parent_comment = result.scalar_one_or_none()
+
+        if not parent_comment:
+            raise HTTPException(status_code=404, detail="Parent comment not found")
+
+        if parent_comment.post_id != post_id:
+            raise HTTPException(status_code=400, detail="Comment does not belong to this post")
+
+        reply = Comment(
+            post_id=post_id,
+            user_id=user_id,
+            content=content,
+            parent_id=parent_comment.id,
+            created_at=func.now(),
+            updated_at=func.now()
+        )
+
+        self.db.add(reply)
+        await self.db.commit()
+        await self.db.refresh(reply)
+
+        query = select(Comment).options(selectinload(Comment.user)).where(Comment.id == reply.id)
+        result = await self.db.execute(query)
+        reply_with_user = result.scalar_one()
+
+        return CommentReplyOut(
+            id=reply_with_user.id,
+            content=reply_with_user.content,
+            parent_id=reply_with_user.parent_id,
+            user=UserSummaryOut(
+                id=reply_with_user.user.id,
+                name=reply_with_user.user.name,
+                profile_image=reply_with_user.user.profile_image
+            ),
+            created_at=reply_with_user.created_at,
+            updated_at=reply_with_user.updated_at
         )
