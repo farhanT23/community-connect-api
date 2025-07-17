@@ -103,3 +103,88 @@ async def update(db,user):
     return user
 
 
+async def get_by_id_details(db, user_id: int, current_user_id: int | None= None):
+    if current_user_id:
+        f = aliased(Friends)
+        query = (
+            select(
+                User,
+                case(
+                    (f.friend_id != None, True),
+                    else_=False
+                ).label("is_followed")
+            )
+            .outerjoin(f, (f.friend_id == User.id) & (f.user_id == current_user_id))
+            .where(User.id == user_id)
+        )
+        
+        result = await db.execute(query)
+        user_row = result.first()
+        if user_row:
+            user, is_followed = user_row
+            user.is_followed = is_followed
+            return user
+        return None
+    else:
+        query = select(User).where(User.id == user_id)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+    
+
+async def get_user_followers(db,user_id:int,current_id:int|None=None):
+    simple_query = select(Friends.user_id).where(Friends.friend_id == user_id).subquery()
+
+    if current_id:
+        f = aliased(Friends)
+        query = (
+            select(
+                User,
+                case(
+                    (f.friend_id != None, True),
+                    else_=False
+                ).label("is_followed")
+            )
+            .outerjoin(f, (f.friend_id == User.id) & (f.user_id == current_id))
+            .where(User.id.in_(simple_query))
+        )
+        if current_id:
+        # Unpack the (User, is_followed) tuples
+            data = []
+            for user, is_followed in result.all():
+                user.is_followed = is_followed
+                data.append(user)
+            return data
+    else:
+        query = select(User).where(User.id.in_(simple_query))
+        result = await db.execute(query)
+        return result.scalars().all()
+    
+
+
+async def get_user_following(db,user_id:int,current_id:int|None=None):
+    simple_query = select(Friends.friend_id).where(Friends.user_id == user_id).subquery()
+
+    if current_id:
+        f = aliased(Friends)
+        query = (
+            select(
+                User,
+                case(
+                    (f.friend_id != None, True),
+                    else_=False
+                ).label("is_followed")
+            )
+            .outerjoin(f, (f.friend_id == User.id) & (f.user_id == current_id))
+            .where(User.id.in_(simple_query))
+        )
+        if current_id:
+        # Unpack the (User, is_followed) tuples
+            data = []
+            for user, is_followed in result.all():
+                user.is_followed = is_followed
+                data.append(user)
+            return data
+    else:
+        query = select(User).where(User.id.in_(simple_query))
+        result = await db.execute(query)
+        return result.scalars().all()
