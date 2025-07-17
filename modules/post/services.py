@@ -483,6 +483,7 @@ class PostService:
         )
 
     async def comment_reply(self, post_id: int, content: str, user_id: int, comment_id: int):
+        # 1. Fetch the parent comment
         query = select(Comment).where(Comment.id == comment_id)
         result = await self.db.execute(query)
         parent_comment = result.scalar_one_or_none()
@@ -492,6 +493,9 @@ class PostService:
 
         if parent_comment.post_id != post_id:
             raise HTTPException(status_code=400, detail="Comment does not belong to this post")
+
+        if parent_comment.parent_id is not None:
+            raise HTTPException(status_code=400, detail="Replies to replies are not allowed")
 
         reply = Comment(
             post_id=post_id,
