@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from modules.user.schema import UserSummaryOut
 
@@ -46,6 +46,7 @@ class PostOut(PostBaseOut):
     reaction_count: int
     comment_count: int
     share_count: int
+    reaction_type: Optional[ReactionTypeEnum] = None
     original_post: Optional[PostShareOut] = None
 
 class PostShareOut(PostBaseOut):

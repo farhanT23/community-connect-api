@@ -34,7 +34,7 @@ async def get_post_detail(
     request: Request,
     post_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(optional_get_current_user)
+    current_user: dict = Depends(optional_get_current_user),
 ):
     user_id = current_user["user_id"] if current_user else None
     post = await PostService(db).get_post_detail(post_id, user_id)
