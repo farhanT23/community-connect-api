@@ -13,7 +13,8 @@ from ..user.schema import ReactionResponse
 from .models import PrivacyEnum
 from .schema import CommentBase, CommentReplyOut, PostOut, ReactionTypeEnum
 from .services.comment_service import CommentService
-from modules.post import PostService
+from .services.post_service import PostService
+from .services.media_service import MediaService
 
 router = APIRouter(
     prefix="/posts",
