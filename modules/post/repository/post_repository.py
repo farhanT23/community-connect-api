@@ -2,7 +2,7 @@ from typing import Optional, List
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, aliased
-from modules.post.models import Post, Reaction, Comment, Media
+from modules.post.models import Comment, Media, Post, PrivacyEnum, Reaction
 from modules.user.models import User
 
 class PostRepository:
@@ -84,3 +84,15 @@ class PostRepository:
         )
         result = await self.db.execute(query)
         return {row[0]: row[1] for row in result.all()}
+    
+    async def search_public_posts_by_content(self, content: str):
+        query = (
+            select(Post)
+            .where(Post.content.ilike(f"%{content}%"))
+            .where(Post.privacy == PrivacyEnum.PUBLIC.value)
+            .options(selectinload(Post.user), selectinload(Post.tagged_media))
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+    
+    
