@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils.database import get_db
 from middlewares.auth import get_current_user, optional_get_current_user
 from utils.error_response import ErrorResponse
+from modules.post.services.reaction_service import ReactionService
 from ..user.schema import ReactionResponse
 from .models import PrivacyEnum
 from .schema import CommentBase, CommentReplyOut, PostOut, ReactionTypeEnum
@@ -115,7 +116,7 @@ async def post_reaction(
         db: AsyncSession = Depends(get_db),
         current_user: dict = Depends(get_current_user)
 ):
-    service = PostService(db)
+    service = ReactionService(db)
     response = await service.react_to_post(
         post_id=post_id,
         user_id=current_user["user_id"],
