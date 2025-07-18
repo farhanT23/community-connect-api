@@ -550,3 +550,106 @@ class PostService:
 
         # Return a 204 No Content response with detail
         return {"detail": "Comment deleted successfully"}
+
+    async def get_user_posts(self, user_id: int, current_user_id: Optional[int], limit: int, offset: int):
+
+        query = (
+            select(Post)
+            .where(Post.user_id == user_id)
+            .options(
+                selectinload(Post.user),
+                selectinload(Post.tagged_media),
+                selectinload(Post.original_post).selectinload(Post.user),
+                selectinload(Post.original_post).selectinload(Post.tagged_media),
+            )
+            .order_by(Post.created_at.desc())
+            .limit(limit)
+        )
+
+        result = await self.db.execute(query)
+        posts = result.scalars().all()
+
+        if not posts:
+            return []
+        
+        post_ids = [post.id for post in posts]
+
+
+        reaction_counts= await self.bulk_count(Reaction, Reaction.post_id, post_ids)
+        comment_counts = await self.bulk_count(Comment, Comment.post_id, post_ids)
+        share_counts = await self.bulk_count(Post, Post.original_post_id, post_ids)
+
+        user_reactions = {}
+        if current_user_id:
+            reaction_query = (
+                select(Reaction.post_id, Reaction.type)
+                .where(Reaction.user_id == current_user_id, Reaction.post_id.in_(post_ids))
+            )
+            reaction_result = await self.db.execute(reaction_query)
+            for post_id, reaction_type in reaction_result.all():
+                user_reactions[post_id] = reaction_type.value
+
+        post_out_list = []
+        for post in posts:
+            if post.privacy == PrivacyEnum.ONLY_ME and post.user_id != current_user_id:
+                continue
+
+            
+            user_out = UserSummaryOut(
+                id=post.user.id,
+                name=post.user.name,
+                profile_image=post.user.profile_image,
+            )
+
+            media_out = [MediaOut(id=m.id, file=m.file) for m in post.tagged_media]
+
+            original_post_out = None
+            if post.original_post:
+                original_user = UserSummaryOut(
+                    id=post.original_post.user.id,
+                    name=post.original_post.user.name,
+                    profile_image=post.original_post.user.profile_image,
+                )
+                original_media = [
+                    MediaOut(id=m.id, file=m.file) for m in post.original_post.tagged_media
+                ]
+                original_post_out = PostShareOut(
+                    id=post.original_post.id,
+                    content=post.original_post.content,
+                    privacy=post.original_post.privacy,
+                    user=original_user,
+                    tagged_media=original_media,
+                    created_at=post.original_post.created_at,
+                    updated_at=post.original_post.updated_at,
+                )
+
+            post_out = PostOut(
+                id=post.id,
+                user=user_out,
+                content=post.content,
+                privacy=post.privacy,
+                tagged_media=media_out,
+                reaction_count=reaction_counts.get(post.id, 0),
+                comment_count=comment_counts.get(post.id, 0),
+                share_count=share_counts.get(post.id, 0),
+                reaction_type=user_reactions.get(post.id),
+                created_at=post.created_at,
+                updated_at=post.updated_at,
+                original_post=original_post_out,
+            )
+            post_out_list.append(post_out)
+
+        return post_out_list
+        
+    async def bulk_count(self, model, column, ids: list[int]) -> dict[int, int]:
+        query = (
+            select(column, func.count())
+            .where(column.in_(ids))
+            .group_by(column)
+        )
+        result = await self.db.execute(query)
+        return {row[0]: row[1] for row in result.all()}
+        
+
+        
+
