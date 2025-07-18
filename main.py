@@ -12,6 +12,7 @@ app = FastAPI(lifespan=lifespan.lifespan,
               version=app_settings.app_version, 
               title=app_settings.app_name)
 app.include_router(modules.user.router)
+app.include_router(modules.post.router)
 app.include_router(modules.friends.router)
 app.mount("/static", StaticFiles(directory="media"), name="static")
 
