@@ -1,3 +1,4 @@
+import modules
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Form, UploadFile, File
@@ -7,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils.database import get_db
 from middlewares.auth import get_current_user, optional_get_current_user
 from utils.error_response import ErrorResponse
-from .models import PrivacyEnum
-
-from .schema import PostOut, ReactionTypeEnum, CommentBase, CommentReplyOut
-from .services import PostService
 from ..user.schema import ReactionResponse
+from .models import PrivacyEnum
+from .schema import CommentBase, CommentReplyOut, PostOut, ReactionTypeEnum
+from .services.comment_service import CommentService
+from modules.post import PostService
 
 router = APIRouter(
     prefix="/posts",
@@ -143,8 +144,8 @@ async def comment_on_post(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    service = PostService(db)
-    comment = await service.comment_on_post(
+    service = CommentService(db)
+    comment = await service.create_comment(
         post_id=post_id,
         user_id=current_user["user_id"],
         content=content
@@ -159,8 +160,8 @@ async def comment_on_comment(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    service = PostService(db)
-    comment = await service.comment_reply(
+    service = CommentService(db)
+    comment = await service.create_reply(
         post_id=post_id,
         comment_id=comment_id,
         user_id=current_user["user_id"],
@@ -174,7 +175,7 @@ async def delete_comment(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    service = PostService(db)
+    service = CommentService(db)
     response = await service.delete_comment(
         comment_id=comment_id,
         user_id=current_user["user_id"]

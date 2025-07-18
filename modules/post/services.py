@@ -4,7 +4,7 @@ from typing import Optional, List
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, aliased
 from fastapi import HTTPException, UploadFile
 
 from modules.post import CommentReplyOut
@@ -20,9 +20,22 @@ class PostService:
         self.db = db
 
     async def get_post_detail(self, post_id: int, current_user_id: Optional[int]) -> PostOut:
-        # Load the post with related data
+        # Aliased Post for share count subquery
+        P2 = aliased(Post)
+
+        # Define correlated subqueries for counts and user's reaction
+        reaction_count_sub = select(func.count(Reaction.id)).where(Reaction.post_id == Post.id).scalar_subquery()
+        comment_count_sub = select(func.count(Comment.id)).where(Comment.post_id == Post.id).scalar_subquery()
+        share_count_sub = select(func.count(P2.id)).where(P2.original_post_id == Post.id).scalar_subquery()
+
+        # Base query for the post, its relationships, and the counts
         query = (
-            select(Post)
+            select(
+                Post,
+                reaction_count_sub.label("reaction_count"),
+                comment_count_sub.label("comment_count"),
+                share_count_sub.label("share_count"),
+            )
             .options(
                 selectinload(Post.user),
                 selectinload(Post.tagged_media),
@@ -31,19 +44,32 @@ class PostService:
             )
             .where(Post.id == post_id)
         )
-        result = await self.db.execute(query)
-        post = result.scalar_one_or_none()
 
-        if not post:
+        # Conditionally add subquery for the current user's reaction
+        if current_user_id:
+            user_reaction_sub = (
+                select(Reaction.type)
+                .where((Reaction.post_id == Post.id) & (Reaction.user_id == current_user_id))
+                .scalar_subquery()
+            )
+            query = query.add_columns(user_reaction_sub.label("reaction_type"))
+
+        result = await self.db.execute(query)
+        row = result.one_or_none()
+
+        if not row:
             raise HTTPException(status_code=404, detail="Post not found")
+
+        # Unpack results from the single row tuple
+        if current_user_id:
+            post, reaction_count, comment_count, share_count, reaction_type_value = row
+        else:
+            post, reaction_count, comment_count, share_count = row
+            reaction_type_value = None
 
         if post.privacy == PrivacyEnum.ONLY_ME:
             if not current_user_id or (current_user_id != post.user_id):
                 raise HTTPException(status_code=403, detail="This post is private")
-
-        reaction_count = await self._count(Reaction, Reaction.post_id == post.id)
-        comment_count = await self._count(Comment, Comment.post_id == post.id)
-        share_count = await self._count(Post, Post.original_post_id == post.id)
 
         user_out = UserSummaryOut(
             id=post.user.id,
@@ -78,18 +104,12 @@ class PostService:
             )
 
         reaction_type = None
-        if current_user_id:
-            reaction_query = (
-                select(Reaction.type)
-                .where(Reaction.post_id == post.id, Reaction.user_id == current_user_id)
-            )
-            reaction_result = await self.db.execute(reaction_query)
-            reaction_type_value = reaction_result.scalar_one_or_none()
-            if reaction_type_value:
-                try:
-                    reaction_type = reaction_type_value.value
-                except ValueError:
-                    reaction_type = None
+        if reaction_type_value:
+            try:
+                reaction_type = reaction_type_value.value
+            except (ValueError, AttributeError):
+                reaction_type = None
+                
         return PostOut(
             id=post.id,
             user=user_out,
