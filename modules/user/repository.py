@@ -1,7 +1,9 @@
 
 from datetime import datetime, timezone
 from modules.user.models import User
-from sqlalchemy import select
+from sqlalchemy import case, func, select
+from sqlalchemy.orm import aliased
+from ..friends.models import Friends
 
 
 
@@ -23,10 +25,42 @@ def create_object(user):
         obj.updated_at = user.updated_at
     return obj
 
-async def get_all(db):
-    result =  await db.execute(select(User))
+from sqlalchemy import select, case, func
+from sqlalchemy.orm import aliased
+from sqlalchemy.ext.asyncio import AsyncSession
 
-    return result.scalars().all()
+async def get_all(db: AsyncSession, user_id: int | None = None):
+    statement = select(User)
+
+    if user_id:
+        f = aliased(Friends)
+        statement = (
+            select(
+                User,
+                case(
+                    (f.friend_id != None, True),
+                    else_=False
+                ).label("is_followed")
+            )
+            .outerjoin(f, (f.friend_id == User.id) & (f.user_id == user_id))
+            .filter(User.id != user_id)
+            .order_by(func.random())
+            .limit(20)
+        )
+
+    result = await db.execute(statement)
+
+    if user_id:
+        # Unpack the (User, is_followed) tuples
+        data = []
+        for user, is_followed in result.all():
+            user.is_followed = is_followed
+            data.append(user)
+    else:
+        data = result.scalars().all()
+
+    return data
+
 
 async def get_by_id(db,user_id):
     query = select(User).where(User.id == user_id)
@@ -67,3 +101,5 @@ async def update(db,user):
     await db.commit()
     await db.refresh(user)
     return user
+
+
