@@ -121,6 +121,16 @@ class UserService:
             raise HTTPException(status_code=400,detail=str(e))
         return user
     
+    async def upload_cover_image(self,user_id,image:UploadFile):
+        user = await self.repository.get_by_id(self.db,user_id)
+        file_name = await self.upload(image)
+        user.cover_image = file_name
+        try:
+            user = await self.repository.update(self.db,user)
+        except Exception as e:
+            raise HTTPException(status_code=400,detail=str(e))
+        return user
+    
     async def upload(self, file:UploadFile):
         root_folder = BASE_PATH
 
