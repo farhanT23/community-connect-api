@@ -153,6 +153,19 @@ class UserService:
         ext = filename.split(".")[-1]
         new_filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}.{ext}"
         return new_filename
+    
+    async def get_user_details(self,user_id:int,current_id:int|None=None):
+        user = await self.repository.get_by_id_details(self.db,user_id,current_id)
+        if not user:
+            raise HTTPException(status_code=404,detail="User not found")
+        return user
 
+    async def get_user_followers(self,user_id:int,current_id:int|None=None):
+        followers = await self.repository.get_user_followers(self.db,user_id,current_id)
+        return followers
+    
+    async def get_user_following(self,user_id:int,current_id:int|None=None):
+        following = await self.repository.get_user_following(self.db,user_id,current_id)
+        return following
 
         
