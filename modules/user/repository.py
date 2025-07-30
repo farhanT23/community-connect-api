@@ -188,3 +188,9 @@ async def get_user_following(db,user_id:int,current_id:int|None=None):
         query = select(User).where(User.id.in_(simple_query))
         result = await db.execute(query)
         return result.scalars().all()
+    
+async def get_all_user_by_name_alike(db: AsyncSession, name: str):
+    query = select(User).where(User.name.ilike(f"%{name}%"))
+    result = await db.execute(query)
+
+    return result.scalars().all()
