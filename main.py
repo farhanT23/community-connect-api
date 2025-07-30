@@ -8,7 +8,7 @@ from utils import lifespan
 from modules.user import router as user_router
 from modules.post import router as post_router
 from modules.friends import router as friends_router
-from modules.search import router as search_router
+from modules.newsfeed import router as newsfeed_router
 
 app = FastAPI(lifespan=lifespan.lifespan,
               version=app_settings.app_version, 
@@ -16,7 +16,7 @@ app = FastAPI(lifespan=lifespan.lifespan,
 app.include_router(user_router)
 app.include_router(post_router)
 app.include_router(friends_router)
-app.include_router(search_router)
+app.include_router(newsfeed_router)
 app.mount("/static", StaticFiles(directory="media"), name="static")
 
 

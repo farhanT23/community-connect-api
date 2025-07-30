@@ -1,8 +1,8 @@
 from enum import Enum
 from pydantic import BaseModel
 from typing import List, Optional
-from modules.user.schema import UserSchema
-from modules.post.schema import PostBaseOut
+from modules.user.schema import UserSummaryOut
+from modules.post.schema import PostOut
 
 class SearchTabEnum(str, Enum):
     all = "all"
@@ -10,5 +10,5 @@ class SearchTabEnum(str, Enum):
     posts = "posts"
 
 class SearchResultsSchema(BaseModel):
-    users: Optional[List[UserSchema]] = []
-    posts: Optional[List[PostBaseOut]] = []
+    users: Optional[List[UserSummaryOut]] = []
+    posts: Optional[List[PostOut]] = []
