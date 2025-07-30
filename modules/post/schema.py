@@ -50,3 +50,7 @@ class PostOut(PostBaseOut):
 
 class PostShareOut(PostBaseOut):
     pass
+
+class PostCreate(BaseModel):
+    content: Optional[str] = None
+    privacy: PrivacyEnum = PrivacyEnum.public

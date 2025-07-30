@@ -1,10 +1,15 @@
-# modules/post/service.py
+import os
+import uuid
+from typing import Optional, List
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 
+from modules.post.models import Post, Reaction, Comment, Media
+from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum
+from modules.user.models import User
 from modules.post.models import Post, Reaction, Comment, PrivacyEnum
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
 
@@ -83,6 +88,85 @@ class PostService:
             updated_at=post.updated_at,
             original_post=original_post_out
         )
+
+    async def create_post(
+        self,
+        user_id: int,
+        content: Optional[str],
+        privacy: PrivacyEnum,
+        media_files: Optional[List[UploadFile]]
+    ) -> PostOut:
+        # Step 1: Save each media file to disk and record in DB
+        saved_media = []
+
+        media_dir = "media"
+        os.makedirs(media_dir, exist_ok=True)
+
+        for file in media_files or []:  # handle None
+            filename = self._generate_unique_filename(file.filename)
+            file_path = os.path.join(media_dir, filename)
+
+            # Save to disk
+            with open(file_path, "wb") as buffer:
+                buffer.write(await file.read())
+
+            # Create Media row
+            media = Media(
+                file=filename,
+                media_type=file.content_type
+            )
+            self.db.add(media)
+            await self.db.flush()  # Needed to get media.id
+            saved_media.append(media)
+
+        # Step 2: Create Post with media
+        post = Post(
+            user_id=user_id,
+            content=content,
+            privacy=privacy,
+            tagged_media=saved_media
+        )
+        self.db.add(post)
+
+        # Step 3: Commit all changes
+        await self.db.commit()
+
+        # Step 4: Refresh post from DB
+        await self.db.refresh(post)
+
+        # Step 5: Build user object for response
+        user = await self.db.get(User, user_id)
+
+        user_out = UserSummaryOut(
+            id=user.id,
+            name=user.name,
+            profile_image=user.profile_image,
+        )
+
+        # Step 6: Build media list for response
+        media_out = [
+            MediaOut(id=m.id, file=m.file, media_type=m.media_type)
+            for m in saved_media
+        ]
+
+        return PostOut(
+            id=post.id,
+            content=post.content,
+            privacy=post.privacy,
+            user=user_out,
+            tagged_media=media_out,
+            reaction_count=0,
+            comment_count=0,
+            share_count=0,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
+            original_post=None
+        )
+
+
+    def _generate_unique_filename(self, original_filename: str) -> str:
+        ext = os.path.splitext(original_filename)[1]
+        return f"{uuid.uuid4().hex}{ext}"
 
     async def _count(self, model, *filters):
         query = select(func.count()).select_from(model).filter(*filters)

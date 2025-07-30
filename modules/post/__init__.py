@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from typing import Optional, List
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Form, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils.database import get_db
 from middlewares.auth import get_current_user, optional_get_current_user
 from utils.error_response import ErrorResponse
+from .models import PrivacyEnum
 
 from .schema import PostOut
 from .services import PostService
@@ -36,6 +39,26 @@ async def get_post_detail(
 
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    return post
+
+@router.post("/create", response_model=PostOut, status_code=status.HTTP_201_CREATED)
+async def create_post(
+    request: Request,
+    content: Optional[str] = Form(None),
+    privacy: PrivacyEnum = Form(...),
+    media_files: Optional[List[UploadFile]] = File(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+
+    post = await service.create_post(
+        user_id=current_user["user_id"],
+        content=content,
+        privacy=privacy,
+        media_files=media_files or []
+    )
 
     return post
 
