@@ -89,3 +89,22 @@ class UserService:
             raise HTTPException(status_code=400,detail=str(e))
         return user
     
+    async def reset_password(self,token,reset_password):
+        token = JWTToken.decode_token(token)
+
+        user = await self.repository.get_by_id(self.db,token['user_id'])
+        user.password = Hasher.hash(reset_password.password)
+        try:
+            user = await self.repository.update(self.db,user)
+        except Exception as e:
+            raise HTTPException(status_code=400,detail=str(e))
+        return user
+    
+    async def forget_password(self,user):
+        user = await self.repository.get_by_email(self.db,user.email)
+
+        token = JWTToken.create_access_token({"user_id":user.id,"email":user.email})
+        
+        return {"token":token,"user":user}
+
+        

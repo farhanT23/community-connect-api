@@ -1,13 +1,14 @@
 
-from fastapi import APIRouter,Request,Depends, Response,status
+from fastapi import APIRouter, BackgroundTasks,Request,Depends, Response,status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from middlewares.auth import get_current_user
+from utils.send_email import send_mail as send_email
 from utils.error_response import ErrorResponse
 from utils.database import get_db
 
-from .schema import (UserLoginResponseSchema, UserLoginSchema, 
+from .schema import (UserForgotPasswordSchema, UserLoginResponseSchema, UserLoginSchema, UserResetPasswordSchema, 
                      UserSchema,UserCreateSchema,Token,
                      UserProfileUpdateSchema
 
@@ -17,7 +18,12 @@ from .service import UserService
 router = APIRouter(
     prefix="/user",
     tags=["user"],
-    responses={404: {"model": ErrorResponse},400: {"model": ErrorResponse},401: {"model": ErrorResponse}},
+    responses={
+        404: {"model": ErrorResponse},
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        200: {"model": ErrorResponse},
+        },
 )
 
 
@@ -94,3 +100,26 @@ async def update_profile(request:Request,profile:UserProfileUpdateSchema
     user = await service.update_profile(current_user["user_id"],profile)
 
     return user
+
+@router.post('/forget-password')
+async def forget_password(request:Request,user:UserForgotPasswordSchema,background_tasks:BackgroundTasks,db:AsyncSession=Depends(get_db)):
+    service = UserService(db)
+    data = await service.forget_password(user)
+
+    background_tasks.add_task(
+            send_email,
+            subject="Reset Password",
+            recipients=[user.email],
+            data={"token":data["token"],"user":data["user"]},
+            template="reset_password.html"
+        )
+    
+    return {"detail":"Email sent"}
+
+
+@router.post('/reset-password/{token}')
+async def reset_password(request:Request,token:str,reset_password:UserResetPasswordSchema,db:AsyncSession=Depends(get_db)):
+    service = UserService(db)
+    await service.reset_password(token,reset_password)
+
+    return {"detail":"Password reseted Successfully"}
