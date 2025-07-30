@@ -1,4 +1,5 @@
 
+
 from typing import List
 from fastapi import APIRouter, BackgroundTasks, File,Request,Depends, Response, UploadFile,status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from middlewares.auth import get_current_user, optional_get_current_user
 from utils.file_validator import validate_file_size_type
+
 from utils.send_email import send_mail as send_email
 from utils.error_response import ErrorResponse
 from utils.database import get_db
@@ -20,6 +22,7 @@ from .schema import (
     Token,
     UserProfileUpdateSchema
     )
+
 from .service import UserService
 
 router = APIRouter(
@@ -129,6 +132,7 @@ async def reset_password(request:Request,token:str,reset_password:UserResetPassw
     service = UserService(db)
     await service.reset_password(token,reset_password)
 
+
     return {"detail":"Password reseted Successfully"}
 
 
@@ -213,3 +217,4 @@ async def get_user(
     user = await user_service.get_user_following(user_id,current_user_id)
 
     return user
+
