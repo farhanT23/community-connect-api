@@ -30,6 +30,7 @@ class Media(Base):
     id = Column(Integer, primary_key=True, index=True)
     file = Column(String(255), nullable=True)
     media_type = Column(String(50), nullable=True)
+    tagged_in_posts = relationship("Post", secondary=post_media_association_table, back_populates="tagged_media")
 
 class Post(Base):
     __tablename__ = "posts"
@@ -42,9 +43,9 @@ class Post(Base):
     created_at = Column(DateTime(timezone=True), nullable=True, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=True, server_default=func.now(), onupdate=func.now())
 
-    user = relationship("User", backref="posts")
+    user = relationship("User", back_populates="posts")
     original_post = relationship("Post", remote_side=[id], backref="shares")
-    tagged_media = relationship("Media", secondary=post_media_association_table, backref="tagged_in_posts")
+    tagged_media = relationship("Media", secondary=post_media_association_table, back_populates="tagged_in_posts")
     reactions = relationship("Reaction", backref="post", cascade="all, delete-orphan")
     comments = relationship("Comment", backref="post" ,cascade="all, delete-orphan")
 

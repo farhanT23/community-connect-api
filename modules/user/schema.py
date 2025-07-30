@@ -1,4 +1,6 @@
 import re
+
+from asyncmy.connection import Optional
 from pydantic import BaseModel, Field, field_validator,EmailStr
 from datetime import date, datetime
 
@@ -62,3 +64,9 @@ class UserProfileUpdateSchema(BaseModel):
     birthdate: date|None
     gender: str|None = Field(examples=["male", "female"])
     bio: str|None
+
+class UserSummaryOut(BaseModel):
+    id: int
+    name: str
+    profile_image: Optional[str]
+    model_config = {"from_attributes": True}
