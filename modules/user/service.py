@@ -167,5 +167,13 @@ class UserService:
     async def get_user_following(self,user_id:int,current_id:int|None=None):
         following = await self.repository.get_user_following(self.db,user_id,current_id)
         return following
+    
+    async def get_settings(self,user_id):
+        settings = await self.repository.get_settings(self.db,user_id)
+        return settings
+    
+    async def update_settings(self,user_id,settings):
+        settings = await self.repository.update_settings(self.db,user_id,settings)
+        return settings
 
         

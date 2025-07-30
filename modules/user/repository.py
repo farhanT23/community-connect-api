@@ -1,6 +1,6 @@
 
 from datetime import datetime, timezone
-from modules.user.models import User
+from modules.user.models import User, Setting
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import aliased
 from ..friends.models import Friends
@@ -188,3 +188,37 @@ async def get_user_following(db,user_id:int,current_id:int|None=None):
         query = select(User).where(User.id.in_(simple_query))
         result = await db.execute(query)
         return result.scalars().all()
+    
+
+
+
+async def get_settings(db,user_id):
+    query = select(Setting).where(Setting.user_id == user_id)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+async def update_settings(db, user_id: int, settings: list):
+    for setting in settings:
+        # Check if setting exists
+        stmt = select(Setting).where(
+            Setting.user_id == user_id,
+            Setting.key == setting.key
+        )
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing
+            await db.execute(
+                update(Setting)
+                .where(Setting.id == existing.id)
+                .values(value=setting.value)
+            )
+        else:
+            # Insert new
+            new_setting = Setting(user_id=user_id, key=setting.key, value=setting.value)
+            db.add(new_setting)
+
+    await db.commit()
+    return True

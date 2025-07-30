@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime,Date,Text
+
+from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, DateTime,Date,Text
 from sqlalchemy.orm import relationship
 
 from utils.database import Base
@@ -23,3 +24,13 @@ class User(Base):
 
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+
+
+
+class Setting(Base):
+    __tablename__ = "settings"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    key = Column(String)
+    value = Column(String)
+    user = relationship("User")

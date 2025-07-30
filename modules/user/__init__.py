@@ -11,6 +11,7 @@ from utils.error_response import ErrorResponse
 from utils.database import get_db
 
 from .schema import (
+    SettingSchema,
     UserForgotPasswordSchema, 
     UserLoginResponseSchema, 
     UserLoginSchema, 
@@ -169,6 +170,19 @@ async def upload_profile_image(
 
     return user
 
+@router.get('/settings',response_model=List[SettingSchema],)
+async def get_settings(
+    db:AsyncSession=Depends(get_db),
+    current_user:dict=Depends(get_current_user)
+):
+    user_service = UserService(db)
+
+    current_user_id = current_user["user_id"]
+
+    settings = await user_service.get_settings(current_user_id)
+
+    return settings
+
 @router.get('/{user_id}',response_model=UserSchema,)
 async def get_user(
     request:Request,
@@ -213,3 +227,23 @@ async def get_user(
     user = await user_service.get_user_following(user_id,current_user_id)
 
     return user
+
+
+
+
+@router.post('/settings',)
+async def update_setting(
+    request:Request,
+    settings:List[SettingSchema],
+    db:AsyncSession=Depends(get_db),
+    current_user:dict=Depends(get_current_user)
+    ):
+    user_service = UserService(db)
+
+    current_user_id = current_user["user_id"]
+
+    user = await user_service.update_settings(current_user_id,settings)
+
+    return {"detail":"Settings updated"}
+
+

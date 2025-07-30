@@ -105,3 +105,7 @@ class UserResetPasswordSchema(BaseModel):
         return self
 
 
+class SettingSchema(BaseModel):
+    key: str
+    value: str
+
