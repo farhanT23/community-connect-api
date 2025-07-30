@@ -18,14 +18,15 @@ class PostService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_post_detail(self, post_id: int, current_user_id: int | None) -> PostOut:
+    async def get_post_detail(self, post_id: int, current_user_id: Optional[int]) -> PostOut:
+        # Load the post with related data
         query = (
             select(Post)
             .options(
                 selectinload(Post.user),
                 selectinload(Post.tagged_media),
                 selectinload(Post.original_post).selectinload(Post.user),
-                selectinload(Post.original_post).selectinload(Post.tagged_media)
+                selectinload(Post.original_post).selectinload(Post.tagged_media),
             )
             .where(Post.id == post_id)
         )
@@ -75,6 +76,19 @@ class PostService:
                 updated_at=post.original_post.updated_at,
             )
 
+        reaction_type = None
+        if current_user_id:
+            reaction_query = (
+                select(Reaction.type)
+                .where(Reaction.post_id == post.id, Reaction.user_id == current_user_id)
+            )
+            reaction_result = await self.db.execute(reaction_query)
+            reaction_type_value = reaction_result.scalar_one_or_none()
+            if reaction_type_value:
+                try:
+                    reaction_type = reaction_type_value.value
+                except ValueError:
+                    reaction_type = None
         return PostOut(
             id=post.id,
             user=user_out,
@@ -84,9 +98,10 @@ class PostService:
             reaction_count=reaction_count,
             comment_count=comment_count,
             share_count=share_count,
+            reaction_type=reaction_type,
             created_at=post.created_at,
             updated_at=post.updated_at,
-            original_post=original_post_out
+            original_post=original_post_out,
         )
 
     async def create_post(
