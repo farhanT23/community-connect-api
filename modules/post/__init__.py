@@ -180,3 +180,19 @@ async def delete_comment(
         user_id=current_user["user_id"]
     )
     return response
+
+@router.get("/{user_id}/posts", response_model=List[PostOut])
+async def get_user_posts(
+    user_id: int,
+    limit: int = 10,
+    offset: int =0,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(optional_get_current_user)
+):
+    service = PostService(db)
+    posts = await service.get_user_posts(user_id, current_user["user_id"] if current_user else None, limit, offset)
+
+    if not posts:
+        raise HTTPException(status_code=404, detail="No posts found for this user")
+
+    return posts
