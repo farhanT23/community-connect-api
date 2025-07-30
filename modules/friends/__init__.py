@@ -44,3 +44,15 @@ async def get_user(
     user = await friends_service.get_all_users(current_user_id)
 
     return user
+
+@router.post('/toggle_follow/{follower_id}')
+async def toggle_follow(
+    request:Request,
+    follower_id:int,
+    db:AsyncSession=Depends(get_db),
+    current_user:dict=Depends(get_current_user)
+    ):
+    friends_service = FriendService(db)
+    await friends_service.toggle_follow(current_user['user_id'],follower_id)
+
+    return {"detail":"Success"}
