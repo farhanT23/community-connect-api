@@ -9,7 +9,7 @@ from middlewares.auth import get_current_user, optional_get_current_user
 from utils.error_response import ErrorResponse
 from .models import PrivacyEnum
 
-from .schema import PostOut, ReactionTypeEnum
+from .schema import PostOut, ReactionTypeEnum, CommentBase, CommentReplyOut
 from .services import PostService
 from ..user.schema import ReactionResponse
 
@@ -135,3 +135,48 @@ async def share_post(
         user_id=current_user["user_id"]
     )
     return shared_post
+
+@router.post("/{post_id}/comment", response_model=CommentBase)
+async def comment_on_post(
+    post_id:int,
+    content: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    comment = await service.comment_on_post(
+        post_id=post_id,
+        user_id=current_user["user_id"],
+        content=content
+    )
+    return comment
+
+@router.post("/{post_id}/comment/{comment_id}", response_model=CommentReplyOut)
+async def comment_on_comment(
+    post_id: int,
+    comment_id: int,
+    content: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    comment = await service.comment_reply(
+        post_id=post_id,
+        comment_id=comment_id,
+        user_id=current_user["user_id"],
+        content=content
+    )
+    return comment
+
+@router.delete("/comment/{comment_id}/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    comment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    response = await service.delete_comment(
+        comment_id=comment_id,
+        user_id=current_user["user_id"]
+    )
+    return response

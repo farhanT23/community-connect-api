@@ -55,3 +55,13 @@ class PostShareOut(PostBaseOut):
 class PostCreate(BaseModel):
     content: Optional[str] = None
     privacy: PrivacyEnum = PrivacyEnum.public
+
+class CommentBase(BaseModel):
+    id: int
+    content: str
+    user: UserSummaryOut
+    created_at: datetime
+    updated_at: datetime
+
+class CommentReplyOut(CommentBase):
+    parent_id: int

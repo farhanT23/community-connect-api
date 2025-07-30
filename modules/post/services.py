@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, UploadFile
 
+from modules.post import CommentReplyOut
 from modules.post.models import Post, Reaction, Comment, Media
-from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum
+from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum, CommentBase
 from modules.user.models import User
 from modules.post.models import Post, Reaction, Comment, PrivacyEnum
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
@@ -442,3 +443,110 @@ class PostService:
             updated_at=shared_post.updated_at,
             original_post=original_post_out
         )
+
+    async def comment_on_post(self, post_id: int, content: str, user_id: int):
+        query = select(Post).where(Post.id == post_id)
+        result = await self.db.execute(query)
+        post = result.scalar_one_or_none()
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+
+        comment = Comment(
+            post_id=post_id,
+            user_id=user_id,
+            content=content,
+            created_at=func.now(),
+            updated_at=func.now()
+        )
+
+        self.db.add(comment)
+        await self.db.commit()
+        await self.db.refresh(comment)
+
+
+        query = select(Comment).options(selectinload(Comment.user)).where(Comment.id == comment.id)
+        result = await self.db.execute(query)
+        comment_with_user = result.scalar_one()
+
+        return CommentBase(
+            id=comment_with_user.id,
+            content=comment_with_user.content,
+            user=UserSummaryOut(
+                id=comment_with_user.user.id,
+                name=comment_with_user.user.name,
+                profile_image=comment_with_user.user.profile_image
+            ),
+            created_at=comment_with_user.created_at,
+            updated_at=comment_with_user.updated_at
+        )
+
+    async def comment_reply(self, post_id: int, content: str, user_id: int, comment_id: int):
+        # 1. Fetch the parent comment
+        query = select(Comment).where(Comment.id == comment_id)
+        result = await self.db.execute(query)
+        parent_comment = result.scalar_one_or_none()
+
+        if not parent_comment:
+            raise HTTPException(status_code=404, detail="Parent comment not found")
+
+        if parent_comment.post_id != post_id:
+            raise HTTPException(status_code=400, detail="Comment does not belong to this post")
+
+        if parent_comment.parent_id is not None:
+            raise HTTPException(status_code=400, detail="Replies to replies are not allowed")
+
+        reply = Comment(
+            post_id=post_id,
+            user_id=user_id,
+            content=content,
+            parent_id=parent_comment.id,
+            created_at=func.now(),
+            updated_at=func.now()
+        )
+
+        self.db.add(reply)
+        await self.db.commit()
+        await self.db.refresh(reply)
+
+        query = select(Comment).options(selectinload(Comment.user)).where(Comment.id == reply.id)
+        result = await self.db.execute(query)
+        reply_with_user = result.scalar_one()
+
+        return CommentReplyOut(
+            id=reply_with_user.id,
+            content=reply_with_user.content,
+            parent_id=reply_with_user.parent_id,
+            user=UserSummaryOut(
+                id=reply_with_user.user.id,
+                name=reply_with_user.user.name,
+                profile_image=reply_with_user.user.profile_image
+            ),
+            created_at=reply_with_user.created_at,
+            updated_at=reply_with_user.updated_at
+        )
+
+    async def delete_comment(self, comment_id: int, user_id: int):
+        query = select(Comment).where(Comment.id == comment_id)
+        result = await self.db.execute(query)
+        comment = result.scalar_one_or_none()
+
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        if comment.user_id != user_id:
+            raise HTTPException(status_code=403, detail="You are not allowed to delete this comment")
+
+        # Delete the comment where parent_id is comment_id
+        reply_query = select(Comment).where(Comment.parent_id == comment_id)
+        reply_result = await self.db.execute(reply_query)
+        replies = reply_result.scalars().all()
+        for reply in replies:
+            await self.db.delete(reply)
+
+        await self.db.delete(comment)
+        await self.db.commit()
+
+        # Return a 204 No Content response with detail
+        return {"detail": "Comment deleted successfully"}
