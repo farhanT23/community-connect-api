@@ -1,18 +1,15 @@
 from fastapi import FastAPI
 from config import app_settings
 from utils import lifespan
+import modules
 
 
 app = FastAPI(lifespan=lifespan.lifespan,
               version=app_settings.app_version, 
               title=app_settings.app_name)
+app.include_router(modules.user.router)
 
 
-@app.get("/")
+@app.get("/health")
 async def root():
-    return {"message": "Hello World"}
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
+    return {"message": "Up"}
