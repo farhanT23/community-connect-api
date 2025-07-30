@@ -9,8 +9,9 @@ from middlewares.auth import get_current_user, optional_get_current_user
 from utils.error_response import ErrorResponse
 from .models import PrivacyEnum
 
-from .schema import PostOut
+from .schema import PostOut, ReactionTypeEnum
 from .services import PostService
+from ..user.schema import ReactionResponse
 
 router = APIRouter(
     prefix="/posts",
@@ -105,4 +106,19 @@ async def remove_post_media(
         user_id=current_user["user_id"]
     )
     return {"detail": "Media removed successfully"}
+
+@router.post("/{post_id}/reaction/{reaction_type}", response_model=ReactionResponse)
+async def post_reaction(
+        post_id:int,
+        reaction_type: ReactionTypeEnum,
+        db: AsyncSession = Depends(get_db),
+        current_user: dict = Depends(get_current_user)
+):
+    service = PostService(db)
+    response = await service.react_to_post(
+        post_id=post_id,
+        user_id=current_user["user_id"],
+        reaction_type=reaction_type
+    )
+    return response
 

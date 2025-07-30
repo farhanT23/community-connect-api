@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, UploadFile
 
 from modules.post.models import Post, Reaction, Comment, Media
-from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum
+from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut, PrivacyEnum, ReactionTypeEnum
 from modules.user.models import User
 from modules.post.models import Post, Reaction, Comment, PrivacyEnum
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
@@ -302,6 +302,47 @@ class PostService:
 
         # 6. Save changes
         await self.db.commit()
+
+    async def react_to_post(
+            self,
+            post_id: int,
+            user_id: int,
+            reaction_type: ReactionTypeEnum
+    ):
+
+        post_query = select(Post).where(Post.id == post_id)
+        result = await self.db.execute(post_query)
+        post = result.scalar_one_or_none()
+
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        reaction_query = (
+            select(Reaction)
+            .where(Reaction.post_id == post_id)
+            .where(Reaction.user_id == user_id)
+        )
+        reaction_result = await self.db.execute(reaction_query)
+        existing_reaction = reaction_result.scalar_one_or_none()
+
+        if existing_reaction:
+            if existing_reaction.type.value == reaction_type.value:
+                await self.db.delete(existing_reaction)
+                await self.db.commit()
+                return {"detail": "Reaction removed"}
+            else:
+                existing_reaction.type = reaction_type.value
+                await self.db.commit()
+                return {"detail": "Reaction updated"}
+        else:
+            new_reaction = Reaction(
+                post_id=post_id,
+                user_id=user_id,
+                type=reaction_type.value
+            )
+            self.db.add(new_reaction)
+            await self.db.commit()
+            return {"detail": "Reaction added"}
 
     def _generate_unique_filename(self, original_filename: str) -> str:
         ext = os.path.splitext(original_filename)[1]
