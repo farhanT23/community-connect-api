@@ -2,6 +2,8 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.cors import CORSMiddleware
+
 from config import BASE_PATH, app_settings
 
 from utils import lifespan
@@ -18,6 +20,19 @@ app.include_router(post_router)
 app.include_router(friends_router)
 app.include_router(newsfeed_router)
 app.mount("/static", StaticFiles(directory="media"), name="static")
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

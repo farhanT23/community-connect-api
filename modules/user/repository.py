@@ -103,7 +103,20 @@ async def update(db,user):
     return user
 
 
-async def get_by_id_details(db, user_id: int, current_user_id: int | None= None):
+async def get_by_id_details(db, user_id: int, current_user_id: int | None = None):
+    # Subqueries for counts
+    followers_count = (
+        select(func.count(Friends.user_id))
+        .where(Friends.friend_id == user_id)
+        .scalar_subquery()
+    )
+
+    following_count = (
+        select(func.count(Friends.friend_id))
+        .where(Friends.user_id == user_id)
+        .scalar_subquery()
+    )
+
     if current_user_id:
         f = aliased(Friends)
         query = (
@@ -112,23 +125,40 @@ async def get_by_id_details(db, user_id: int, current_user_id: int | None= None)
                 case(
                     (f.friend_id != None, True),
                     else_=False
-                ).label("is_followed")
+                ).label("is_followed"),
+                followers_count.label("followers_count"),
+                following_count.label("following_count")
             )
             .outerjoin(f, (f.friend_id == User.id) & (f.user_id == current_user_id))
             .where(User.id == user_id)
         )
-        
+
         result = await db.execute(query)
         user_row = result.first()
         if user_row:
-            user, is_followed = user_row
+            user, is_followed, followers_count, following_count = user_row
             user.is_followed = is_followed
+            user.followers_count = followers_count
+            user.following_count = following_count
             return user
         return None
     else:
-        query = select(User).where(User.id == user_id)
+        query = (
+            select(
+                User,
+                followers_count.label("followers_count"),
+                following_count.label("following_count")
+            )
+            .where(User.id == user_id)
+        )
         result = await db.execute(query)
-        return result.scalar_one_or_none()
+        user_row = result.first()
+        if user_row:
+            user, followers_count, following_count = user_row
+            user.followers_count = followers_count
+            user.following_count = following_count
+            return user
+        return None
     
 
 async def get_user_followers(db,user_id:int,current_id:int|None=None):
@@ -147,6 +177,7 @@ async def get_user_followers(db,user_id:int,current_id:int|None=None):
             .outerjoin(f, (f.friend_id == User.id) & (f.user_id == current_id))
             .where(User.id.in_(simple_query))
         )
+        result = await db.execute(query)
         if current_id:
         # Unpack the (User, is_followed) tuples
             data = []
@@ -177,6 +208,7 @@ async def get_user_following(db,user_id:int,current_id:int|None=None):
             .outerjoin(f, (f.friend_id == User.id) & (f.user_id == current_id))
             .where(User.id.in_(simple_query))
         )
+        result = await db.execute(query)
         if current_id:
         # Unpack the (User, is_followed) tuples
             data = []

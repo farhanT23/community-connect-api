@@ -216,5 +216,7 @@ async def get_user(
 
     user = await user_service.get_user_following(user_id,current_user_id)
 
+
+
     return user
 
