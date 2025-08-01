@@ -45,3 +45,5 @@ class MediaService:
                 os.remove(file_path)
             except OSError as e:
                 print(f"Error deleting file {file_path}: {e}")
+
+        await self.db.delete(media)

@@ -69,6 +69,33 @@ class PostService:
 
         await self.repository.delete(post)
 
+    async def edit_post(self, post_id: int, user_id: int, content: Optional[str], privacy: PrivacyEnum, media_files: Optional[List[UploadFile]]) -> PostOut:
+        post = await self.repository.get_post_with_media(post_id)
+
+        if not post:
+            return {"message": "Post not found"}
+        if post.user_id != user_id:
+            return {"message": "You do not have permission to edit this post"}
+
+        # Update content and privacy
+        post.content = content
+        post.privacy = privacy
+
+        # Handle media files
+        if media_files is not None:
+            # Delete existing media files
+            for media in post.tagged_media:
+                await self.media_service.delete_media_file(media)
+            # Clear the media association
+            post.tagged_media.clear()
+            # Save new media files
+            saved_media = await self.media_service.save_media_files(media_files)
+            post.tagged_media = saved_media
+
+        await self.repository.update(post)
+
+        return self._map_post_to_post_out(post, 0, 0, 0)
+
     async def get_user_posts(self, user_id: int, current_user_id: Optional[int], limit: int, offset: int) -> List[PostOut]:
         posts = await self.repository.get_user_posts(user_id, limit=limit, offset=offset)
 

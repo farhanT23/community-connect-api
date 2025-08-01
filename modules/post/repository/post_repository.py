@@ -59,9 +59,9 @@ class PostRepository:
         return result.scalars().all()
     
     async def get_post_with_media(self, post_id: int):
-        query = select(Post).where(Post.id == post_id).options(selectinload(Post.tagged_media))
+        query = select(Post).where(Post.id == post_id).options(selectinload(Post.tagged_media), selectinload(Post.user))
         result = await self.db.execute(query)
-        return result.one_or_none()
+        return result.scalar_one_or_none()
     
     async def get_user_by_id(self, user_id: int):
         return await self.db.get(User, user_id)
@@ -94,5 +94,10 @@ class PostRepository:
         )
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def update(self, post: Post):
+        await self.db.commit()
+        await self.db.refresh(post)
+        return post
     
     
