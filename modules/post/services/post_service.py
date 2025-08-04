@@ -114,7 +114,7 @@ class PostService:
                 Reaction.post_id.in_(post_ids)
             )
             reaction_result = await self.db.execute(reaction_query)
-            user_reactions = {post_id: r_type.value for post_id, r_type in reaction_result.all()}
+            user_reactions = {post_id: r_type for post_id, r_type in reaction_result.all()}
 
         return [
             self._map_post_to_post_out(
@@ -146,6 +146,13 @@ class PostService:
                 updated_at=post.original_post.updated_at,
             )
 
+        reaction_type_value = None
+        if reaction_type:
+            if hasattr(reaction_type, 'value'):
+                reaction_type_value = reaction_type.value
+            else:
+                reaction_type_value = reaction_type
+
         return PostOut(
             id=post.id,
             user=user_out,
@@ -155,7 +162,7 @@ class PostService:
             reaction_count=reaction_count,
             comment_count=comment_count,
             share_count=share_count,
-            reaction_type=reaction_type.value if reaction_type and hasattr(reaction_type, 'value') else reaction_type,
+            reaction_type=reaction_type_value,
             created_at=post.created_at,
             updated_at=post.updated_at,
             original_post=original_post_out,
