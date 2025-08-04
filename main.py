@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from config import app_settings
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware

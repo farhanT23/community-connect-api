@@ -107,6 +107,9 @@ class UserService:
     async def forget_password(self,user):
         user = await self.repository.get_by_email(self.db,user.email)
 
+        if not user:
+            raise HTTPException(status_code=404,detail="User not found with this email")
+
         token = JWTToken.create_access_token({"user_id":user.id,"email":user.email})
         
         return {"token":token,"user":user}
