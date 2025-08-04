@@ -77,8 +77,8 @@ class CommentService:
     def map_comment_to_schema(self, comment: Comment, schema_class):
         user_summary = UserSummaryOut(
             id=comment.user.id,
-            username=comment.user.username,
-            profile_picture=comment.user.profile_picture
+            name=comment.user.name,
+            profile_image=comment.user.profile_image
         )
 
         data = {
