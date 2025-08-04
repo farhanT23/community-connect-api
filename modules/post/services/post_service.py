@@ -1,12 +1,14 @@
 from typing import Optional, List
-from fastapi import UploadFile
-from sqlalchemy import select
+from fastapi import UploadFile, HTTPException
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from modules.post.models import Post, PrivacyEnum, Reaction, Comment
 from modules.post.schema import PostOut, PostShareOut, UserSummaryOut, MediaOut
 from modules.post.repository.post_repository import PostRepository
 from modules.post.services.media_service import MediaService
+from modules.user.models import User
 
 
 class PostService:
@@ -166,6 +168,86 @@ class PostService:
             created_at=post.created_at,
             updated_at=post.updated_at,
             original_post=original_post_out,
+        )
+
+    async def _count(self, model, *filters):
+        query = select(func.count()).select_from(model).filter(*filters)
+        result = await self.db.execute(query)
+        return result.scalar_one()
+
+    async def share_post(self, post_id: int, user_id: int) -> PostOut:
+        query = (
+            select(Post)
+            .options(
+                selectinload(Post.user),
+                selectinload(Post.tagged_media)
+            )
+            .where(Post.id == post_id)
+        )
+        result = await self.db.execute(query)
+        original_post = result.scalar_one_or_none()
+
+        if not original_post:
+            raise HTTPException(status_code=404, detail="Original post not found")
+
+        if original_post.privacy != PrivacyEnum.PUBLIC:
+            raise HTTPException(status_code=403, detail="Only public posts can be shared")
+
+        shared_post = Post(
+            user_id=user_id,
+            original_post_id=original_post.id,
+            content="shared post",
+            privacy=PrivacyEnum.PUBLIC
+        )
+
+        self.db.add(shared_post)
+        await self.db.commit()
+        await self.db.refresh(shared_post)
+
+        reaction_count = 0
+        comment_count = 0
+        share_count = await self._count(Post, Post.original_post_id == original_post.id)
+
+        user = await self.db.get(User, user_id)
+        user_out = UserSummaryOut(
+            id=user.id,
+            name=user.name,
+            profile_image=user.profile_image,
+        )
+
+        original_user_out = UserSummaryOut(
+            id=original_post.user.id,
+            name=original_post.user.name,
+            profile_image=original_post.user.profile_image,
+        )
+
+        original_media = [
+            MediaOut(id=m.id, file=m.file)
+            for m in original_post.tagged_media
+        ]
+
+        original_post_out = PostShareOut(
+            id=original_post.id,
+            content=original_post.content,
+            privacy=original_post.privacy,
+            user=original_user_out,
+            tagged_media=original_media,
+            created_at=original_post.created_at,
+            updated_at=original_post.updated_at,
+        )
+
+        return PostOut(
+            id=shared_post.id,
+            user=user_out,
+            content=shared_post.content,
+            privacy=shared_post.privacy,
+            tagged_media=[],
+            reaction_count=reaction_count,
+            comment_count=comment_count,
+            share_count=share_count,
+            created_at=shared_post.created_at,
+            updated_at=shared_post.updated_at,
+            original_post=original_post_out
         )
 
 
