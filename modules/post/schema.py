@@ -60,8 +60,11 @@ class CommentBase(BaseModel):
     id: int
     content: str
     user: UserSummaryOut
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
 class CommentReplyOut(CommentBase):
     parent_id: int
+
+class CommentOut(CommentBase):
+    replies: Optional[List[CommentReplyOut]]

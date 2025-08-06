@@ -11,7 +11,7 @@ from utils.error_response import ErrorResponse
 from modules.post.services.reaction_service import ReactionService
 from ..user.schema import ReactionResponse
 from .models import PrivacyEnum
-from .schema import CommentBase, CommentReplyOut, PostOut, ReactionTypeEnum
+from .schema import CommentBase, CommentReplyOut, PostOut, ReactionTypeEnum, CommentOut
 from .services.comment_service import CommentService
 from .services.post_service import PostService
 from .services.media_service import MediaService
@@ -138,6 +138,27 @@ async def share_post(
         user_id=current_user["user_id"]
     )
     return shared_post
+
+@router.get("/{post_id}/comments", response_model=List[CommentOut])
+async def get_post_comments(
+    post_id: int,
+    limit: int = 10,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(optional_get_current_user)
+):
+    service = CommentService(db)
+    comments = await service.get_post_comments(
+        post_id=post_id,
+        user_id=current_user["user_id"] if current_user else None,
+        limit=limit,
+        offset=offset
+    )
+
+    if not comments:
+        raise HTTPException(status_code=404, detail="No comments found for this post")
+
+    return comments
 
 @router.post("/{post_id}/comment", response_model=CommentBase)
 async def comment_on_post(
