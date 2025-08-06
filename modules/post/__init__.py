@@ -163,7 +163,7 @@ async def get_post_comments(
 @router.post("/{post_id}/comment", response_model=CommentBase)
 async def comment_on_post(
     post_id:int,
-    content: str,
+    content: str = Form(...),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
