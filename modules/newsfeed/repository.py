@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
@@ -35,20 +35,50 @@ class NewsfeedRepository:
             .scalar_subquery()
         )
 
-        query = (
-            select(
-                Post,
-                reaction_count_subquery.label("reaction_count"),
-                comment_count_subquery.label("comment_count"),
-                share_count_subquery.label("share_count"),
+        # Add user reaction type subquery if user_id exists
+        user_reaction_subquery = None
+        if user_id:
+            user_reaction_subquery = (
+                select(cast(Reaction.type, String))
+                .where(
+                    Reaction.post_id == Post.id,
+                    Reaction.user_id == user_id
+                )
+                .correlate(Post)
+                .scalar_subquery()
             )
-            .options(
-                selectinload(Post.user),
-                selectinload(Post.tagged_media),
-                selectinload(Post.original_post).selectinload(Post.user),
-                selectinload(Post.original_post).selectinload(Post.tagged_media),
+
+        if user_id:
+            query = (
+                select(
+                    Post,
+                    reaction_count_subquery.label("reaction_count"),
+                    comment_count_subquery.label("comment_count"),
+                    share_count_subquery.label("share_count"),
+                    user_reaction_subquery.label("reaction_type"),
+                )
+                .options(
+                    selectinload(Post.user),
+                    selectinload(Post.tagged_media),
+                    selectinload(Post.original_post).selectinload(Post.user),
+                    selectinload(Post.original_post).selectinload(Post.tagged_media),
+                )
             )
-        )
+        else:
+            query = (
+                select(
+                    Post,
+                    reaction_count_subquery.label("reaction_count"),
+                    comment_count_subquery.label("comment_count"),
+                    share_count_subquery.label("share_count"),
+                )
+                .options(
+                    selectinload(Post.user),
+                    selectinload(Post.tagged_media),
+                    selectinload(Post.original_post).selectinload(Post.user),
+                    selectinload(Post.original_post).selectinload(Post.tagged_media),
+                )
+            )
 
         if user_id:
             following_subquery = (
@@ -72,10 +102,15 @@ class NewsfeedRepository:
 
         posts = []
         for row in result.all():
-            post, reaction_count, comment_count, share_count = row
+            if user_id:
+                post, reaction_count, comment_count, share_count, reaction_type = row
+                post.reaction_type = reaction_type
+            else:
+                post, reaction_count, comment_count, share_count = row
+                post.reaction_type = None
+
             post.reaction_count = reaction_count
             post.comment_count = comment_count
             post.share_count = share_count
             posts.append(post)
-
         return posts
