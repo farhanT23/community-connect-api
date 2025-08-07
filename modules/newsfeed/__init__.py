@@ -17,6 +17,6 @@ async def get_newsfeed(
     page_size: int = Query(10, ge=1, le=100)
 ):
     service = NewsfeedService(db)
-    user_id = current_user["id"] if current_user else None
+    user_id = current_user["user_id"] if current_user else None
     posts = await service.get_newsfeed(user_id=user_id, page=page, page_size=page_size)
     return {"posts": posts}
