@@ -1,4 +1,6 @@
 import re
+from pydantic import BaseModel, Field, field_validator,EmailStr, model_validator
+from enum import Enum
 
 
 from asyncmy.connection import Optional
@@ -37,16 +39,21 @@ class UserCreateSchema(UserBaseSchema):
         return v
     
 
-class UserSchema(UserBaseSchema):
+class UserSchema(BaseModel):
     id: int
-    is_active: bool
-    profile_image: str|None
-    cover_image: str|None
-    birthdate: date|None
-    gender: str|None = Field(examples=["male", "female"])
-    bio: str|None
-    created_at: datetime
-    updated_at: datetime
+    name: str
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
+    profile_image: Optional[str] = None
+    cover_image: Optional[str] = None
+    birthdate: Optional[date] = None
+    gender: Optional[str] = None
+    bio: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    followers_count: Optional[int] = 0
+    following_count: Optional[int] = 0
+    is_followed: Optional[bool] = False
 
     class Config:
         from_attributes = True
@@ -75,6 +82,11 @@ class UserSummaryOut(BaseModel):
     name: str
     profile_image: Optional[str]
     model_config = {"from_attributes": True}
+
+
+class ReactionResponse(BaseModel):
+    detail: str
+
 
 class UserForgotPasswordSchema(BaseModel):
     email: EmailStr
