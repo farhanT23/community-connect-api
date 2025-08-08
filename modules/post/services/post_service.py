@@ -40,6 +40,7 @@ class PostService:
         privacy: PrivacyEnum,
         media_files: Optional[List[UploadFile]]
     ) -> PostOut:
+
         saved_media = await self.media_service.save_media_files(media_files)
 
         post = Post(
@@ -48,14 +49,38 @@ class PostService:
             privacy=privacy,
             tagged_media=saved_media
         )
+        self.db.add(post)
 
-        await self.repository.add_and_refresh(post)
+        await self.db.commit()
 
-        # Fetch and attach the user object to the post instance for mapping
-        user = await self.repository.get_user_by_id(user_id)
-        post.user = user
+        await self.db.refresh(post)
 
-        return self._map_post_to_post_out(post, 0, 0, 0)
+        user = await self.db.get(User, user_id)
+
+        user_out = UserSummaryOut(
+            id=user.id,
+            name=user.name,
+            profile_image=user.profile_image,
+        )
+
+        media_out = [
+            MediaOut(id=m.id, file=m.file)
+            for m in saved_media
+        ]
+
+        return PostOut(
+            id=post.id,
+            content=post.content,
+            privacy=post.privacy,
+            user=user_out,
+            tagged_media=media_out,
+            reaction_count=0,
+            comment_count=0,
+            share_count=0,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
+            original_post=None
+        )
 
     async def delete_post(self, post_id: int, current_user_id: int):
         post = await self.repository.get_post_with_media(post_id)
@@ -67,7 +92,7 @@ class PostService:
 
         for media in post.tagged_media:
             # delete_media_file is synchronous, so no await is needed
-            self.media_service.delete_media_file(media)
+            await self.media_service.delete_media_file(media)
 
         await self.repository.delete(post)
 
